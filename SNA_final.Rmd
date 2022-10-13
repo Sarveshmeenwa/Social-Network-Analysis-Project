@@ -1,0 +1,961 @@
+---
+title: "Social Network Analysis"
+author: "MEENOWA Sarvesh"
+date: "02/12/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+
+```{r}
+## Load important libraries
+library(igraph)
+library(readr)
+library(dplyr)
+library(networkD3)
+library(gganimate)
+#library(gapminder)
+library(ggplot2)
+library(tidyverse)
+library(circlize)
+library(ggraph)
+library(tidygraph)
+library(corrr)
+library(RColorBrewer)
+
+```
+
+
+```{r}
+#import dataframe
+df <- read_csv("H:/Downloads/Datatsets/Auditions.db.comp (1).csv", locale = locale(encoding = "ISO-8859-1"))
+head(df)
+```
+
+## Simple SNA
+
+
+Create a subset of the dataset and represent a bipartite and a multipartite graph 
+of internal members, and the same thing external members (do not mix years) :
+1. 2017, internal members
+2. 2017, external members
+3. 2018, internal members
+4. 2018, external members
+5. 2019, internal members
+6. 2019, external members
+7. 2020, internal members
+8. 2020, external members
+
+```{r}
+#2017 internal members
+interne_2017 = df %>% filter(status == 'interne' & year == 2017)
+#2017 external members
+externe_2017 = df %>% filter(status == 'externe' & year == 2017)
+#2018 internal members
+interne_2018 = df %>% filter(status == 'interne' & year == 2018)
+#2018 external members
+externe_2018 = df %>% filter(status == 'externe' & year == 2018)
+#2019 internal members
+interne_2019 = df %>% filter(status == 'interne' & year == 2019)
+#2019 external members
+externe_2019 = df %>% filter(status == 'externe' & year == 2019)
+#2020 internal members
+interne_2020 = df %>% filter(status == 'interne' & year == 2020)
+#2020 external members
+externe_2020 = df %>% filter(status == 'externe' & year == 2020)
+```
+
+
+
+Use gganimate (in R, or any Python equivalent) to create a GIF-based succession of graphs for the years 2017 to 2020, for external members only(GGanimate doesn't work on networks)
+. Make an interactive graph of one year (internal members) with networkD3 (or the
+Python equivalent).
+
+```{r}
+#create edgelist for every dataset
+#extern 2017
+externe_2017_edge_list_name <- externe_2017 %>% select(n_poste, Name) %>%
+  inner_join(., select(., n_poste, Name), by = "n_poste") %>%
+  rename(Name1 = Name.x, Name2 = Name.y) %>%
+  filter(Name1 != Name2) %>%
+  unique %>%
+  arrange(n_poste)
+
+head(externe_2017_edge_list_name)
+
+#create node list
+
+#  Get distinct source names
+sources1 <-externe_2017_edge_list_name  %>% distinct(Name1) %>% rename(label = Name1)
+# Get distinct destination names
+destinations1 <- externe_2017_edge_list_name %>%
+  distinct(Name2) %>%
+  rename(label = Name2)
+# Join the two data to create node
+# Add unique ID for each country
+nodes1 <- inner_join(sources1, destinations1, by = "label") 
+nodes1 <- nodes1 %>%
+  mutate(id = 1:nrow(nodes1)) %>%
+  select(id, everything())
+head(nodes1, 3)
+
+# Rename the n.call column to weight
+ externe_2017_edge_list_name <- externe_2017_edge_list_name %>%
+  rename(weight = n_poste)
+## (a) Join nodes id for source column
+edges1 <-externe_2017_edge_list_name  %>% 
+  left_join(nodes1, by = c("Name1" = "label")) %>% 
+  rename(from = id)
+# (b) Join nodes id for destination column
+edges1 <- edges1 %>% 
+  left_join(nodes1, by = c("Name2" = "label")) %>% 
+  rename(to = id)
+# (c) Select/keep only the columns from and to
+edges1 <- select(edges1, from, to, weight)
+head(edges1, 3)
+```
+
+
+
+
+
+
+```{r}
+set.seed(4)
+net.tidy1 <- tbl_graph(
+  nodes = nodes1, edges = edges1, directed = TRUE
+  )
+ggraph(net.tidy1, layout = "graphopt") + 
+  geom_edge_link(width = 0.5, colour = "lightgray") +
+  geom_node_point(size = 1.5, colour = "#00AFBB") +
+  geom_node_text(aes(label = label), repel = TRUE)+
+  theme_graph()
+```
+
+
+
+
+```{r}
+#interne 2017
+interne_2017_edge_list_name <- interne_2017 %>% select(n_poste, Name) %>%
+  inner_join(., select(., n_poste, Name), by = "n_poste") %>%
+  rename(Name1 = Name.x, Name2 = Name.y) %>%
+  filter(Name1 != Name2) %>%
+  unique %>%
+  arrange(n_poste)
+
+head(interne_2017_edge_list_name)
+
+#create node list
+
+#  Get distinct source names
+sources2 <-interne_2017_edge_list_name  %>% distinct(Name1) %>% rename(label = Name1)
+# Get distinct destination names
+destinations2 <- interne_2017_edge_list_name %>%
+  distinct(Name2) %>%
+  rename(label = Name2)
+# Join the two data to create node
+# Add unique ID for each country
+nodes2 <- inner_join(sources2, destinations2, by = "label") 
+nodes2 <- nodes2 %>%
+  mutate(id = 1:nrow(nodes2)) %>%
+  select(id, everything())
+head(nodes2, 3)
+
+# Rename the n.call column to weight
+ interne_2017_edge_list_name <- interne_2017_edge_list_name %>%
+  rename(weight = n_poste)
+## (a) Join nodes id for source column
+edges2 <-interne_2017_edge_list_name  %>% 
+  left_join(nodes2, by = c("Name1" = "label")) %>% 
+  rename(from = id)
+# (b) Join nodes id for destination column
+edges2 <- edges2 %>% 
+  left_join(nodes2, by = c("Name2" = "label")) %>% 
+  rename(to = id)
+# (c) Select/keep only the columns from and to
+edges2 <- select(edges2, from, to, weight)
+head(edges2, 3)
+```
+
+```{r}
+set.seed(12)
+net.tidy2 <- tbl_graph(
+  nodes = nodes2, edges = edges2, directed = TRUE
+  )
+ggraph(net.tidy2, layout = "graphopt") + 
+  geom_edge_link(width = 0.5, colour = "lightgray") +
+  geom_node_point(size = 1.5, colour = "#00AFBB") +
+  geom_node_text(aes(label = label), repel = TRUE)+
+  theme_graph()
+```
+```{r}
+#externe 2018
+externe_2018_edge_list_name <- externe_2018 %>% select(n_poste, Name) %>%
+  inner_join(., select(., n_poste, Name), by = "n_poste") %>%
+  rename(Name1 = Name.x, Name2 = Name.y) %>%
+  filter(Name1 != Name2) %>%
+  unique %>%
+  arrange(n_poste)
+
+head(externe_2018_edge_list_name)
+
+#create node list
+
+#  Get distinct source names
+sources3 <-externe_2018_edge_list_name  %>% distinct(Name1) %>% rename(label = Name1)
+# Get distinct destination names
+destinations3 <- externe_2018_edge_list_name %>%
+  distinct(Name2) %>%
+  rename(label = Name2)
+# Join the two data to create node
+# Add unique ID for each country
+nodes3 <- inner_join(sources3, destinations3, by = "label") 
+nodes3 <- nodes3 %>%
+  mutate(id = 1:nrow(nodes3)) %>%
+  select(id, everything())
+head(nodes3, 3)
+
+# Rename the n.call column to weight
+ externe_2018_edge_list_name <- externe_2018_edge_list_name %>%
+  rename(weight = n_poste)
+## (a) Join nodes id for source column
+edges3 <-externe_2018_edge_list_name  %>% 
+  left_join(nodes3, by = c("Name1" = "label")) %>% 
+  rename(from = id)
+# (b) Join nodes id for destination column
+edges3 <- edges3 %>% 
+  left_join(nodes3, by = c("Name2" = "label")) %>% 
+  rename(to = id)
+# (c) Select/keep only the columns from and to
+edges3 <- select(edges3, from, to, weight)
+head(edges3, 3)
+```
+```{r}
+set.seed(123)
+net.tidy3 <- tbl_graph(
+  nodes = nodes3, edges = edges3, directed = TRUE
+  )
+ggraph(net.tidy3, layout = "graphopt") + 
+  geom_edge_link(width = 0.5, colour = "lightgray") +
+  geom_node_point(size = 1.5, colour = "#00AFBB") +
+  geom_node_text(aes(label = label), repel = TRUE)+
+  theme_graph()
+```
+
+
+```{r}
+#interne 2018
+interne_2018_edge_list_name <- interne_2018 %>% select(n_poste, Name) %>%
+  inner_join(., select(., n_poste, Name), by = "n_poste") %>%
+  rename(Name1 = Name.x, Name2 = Name.y) %>%
+  filter(Name1 != Name2) %>%
+  unique %>%
+  arrange(n_poste)
+
+head(interne_2018_edge_list_name)
+
+#create node list
+
+#  Get distinct source names
+sources4 <-interne_2018_edge_list_name  %>% distinct(Name1) %>% rename(label = Name1)
+# Get distinct destination names
+destinations4 <- interne_2018_edge_list_name %>%
+  distinct(Name2) %>%
+  rename(label = Name2)
+# Join the two data to create node
+# Add unique ID for each country
+nodes4 <- inner_join(sources4, destinations4, by = "label") 
+nodes4 <- nodes4 %>%
+  mutate(id = 1:nrow(nodes4)) %>%
+  select(id, everything())
+head(nodes4, 3)
+
+# Rename the n.call column to weight
+ interne_2018_edge_list_name <- interne_2018_edge_list_name %>%
+  rename(weight = n_poste)
+## (a) Join nodes id for source column
+edges4 <-interne_2018_edge_list_name  %>% 
+  left_join(nodes4, by = c("Name1" = "label")) %>% 
+  rename(from = id)
+# (b) Join nodes id for destination column
+edges4 <- edges4 %>% 
+  left_join(nodes4, by = c("Name2" = "label")) %>% 
+  rename(to = id)
+# (c) Select/keep only the columns from and to
+edges4 <- select(edges4, from, to, weight)
+head(edges4, 3)
+
+```
+
+```{r}
+set.seed(154)
+net.tidy4 <- tbl_graph(
+  nodes = nodes4, edges = edges4, directed = TRUE
+  )
+ggraph(net.tidy4, layout = "graphopt") + 
+  geom_edge_link(width = 0.5, colour = "lightgray") +
+  geom_node_point(size = 1.5, colour = "#00AFBB") +
+  geom_node_text(aes(label = label), repel = TRUE)+
+  theme_graph()
+
+```
+```{r}
+#interne 2019
+interne_2019_edge_list_name <- interne_2019 %>% select(n_poste, Name) %>%
+  inner_join(., select(., n_poste, Name), by = "n_poste") %>%
+  rename(Name1 = Name.x, Name2 = Name.y) %>%
+  filter(Name1 != Name2) %>%
+  unique %>%
+  arrange(n_poste)
+
+head(interne_2019_edge_list_name)
+
+#create node list
+
+#  Get distinct source names
+sources5 <-interne_2019_edge_list_name  %>% distinct(Name1) %>% rename(label = Name1)
+# Get distinct destination names
+destinations5 <- interne_2019_edge_list_name %>%
+  distinct(Name2) %>%
+  rename(label = Name2)
+# Join the two data to create node
+# Add unique ID for each country
+nodes5 <- inner_join(sources5, destinations5, by = "label") 
+nodes5 <- nodes5 %>%
+  mutate(id = 1:nrow(nodes5)) %>%
+  select(id, everything())
+head(nodes5, 3)
+
+# Rename the n.call column to weight
+ interne_2019_edge_list_name <- interne_2019_edge_list_name %>%
+  rename(weight = n_poste)
+## (a) Join nodes id for source column
+edges5 <-interne_2019_edge_list_name  %>% 
+  left_join(nodes5, by = c("Name1" = "label")) %>% 
+  rename(from = id)
+# (b) Join nodes id for destination column
+edges5 <- edges5 %>% 
+  left_join(nodes5, by = c("Name2" = "label")) %>% 
+  rename(to = id)
+# (c) Select/keep only the columns from and to
+edges5 <- select(edges5, from, to, weight)
+head(edges5, 3)
+```
+```{r}
+set.seed(154)
+net.tidy5 <- tbl_graph(
+  nodes = nodes5, edges = edges5, directed = TRUE
+  )
+ggraph(net.tidy5, layout = "graphopt") + 
+  geom_edge_link(width = 0.5, colour = "lightgray") +
+  geom_node_point(size = 1.5, colour = "#00AFBB") +
+  geom_node_text(aes(label = label), repel = TRUE)+
+  theme_graph()
+```
+```{r}
+#externe 2019
+externe_2019_edge_list_name <- externe_2019 %>% select(n_poste, Name) %>%
+  inner_join(., select(., n_poste, Name), by = "n_poste") %>%
+  rename(Name1 = Name.x, Name2 = Name.y) %>%
+  filter(Name1 != Name2) %>%
+  unique %>%
+  arrange(n_poste)
+
+head(externe_2019_edge_list_name)
+
+#create node list
+
+#  Get distinct source names
+sources6 <-externe_2019_edge_list_name  %>% distinct(Name1) %>% rename(label = Name1)
+# Get distinct destination names
+destinations6 <- externe_2019_edge_list_name %>%
+  distinct(Name2) %>%
+  rename(label = Name2)
+# Join the two data to create node
+# Add unique ID for each country
+nodes6 <- inner_join(sources6, destinations6, by = "label") 
+nodes6 <- nodes6 %>%
+  mutate(id = 1:nrow(nodes6)) %>%
+  select(id, everything())
+head(nodes6, 3)
+
+# Rename the n.call column to weight
+ externe_2019_edge_list_name <- externe_2019_edge_list_name %>%
+  rename(weight = n_poste)
+## (a) Join nodes id for source column
+edges6 <-externe_2019_edge_list_name  %>% 
+  left_join(nodes6, by = c("Name1" = "label")) %>% 
+  rename(from = id)
+# (b) Join nodes id for destination column
+edges6 <- edges6 %>% 
+  left_join(nodes6, by = c("Name2" = "label")) %>% 
+  rename(to = id)
+# (c) Select/keep only the columns from and to
+edges6 <- select(edges6, from, to, weight)
+head(edges6, 3)
+
+```
+```{r}
+set.seed(154)
+net.tidy6 <- tbl_graph(
+  nodes = nodes6, edges = edges6, directed = TRUE
+  )
+ggraph(net.tidy6, layout = "graphopt") + 
+  geom_edge_link(width = 0.5, colour = "lightgray") +
+  geom_node_point(size = 1.5, colour = "#00AFBB") +
+  geom_node_text(aes(label = label), repel = TRUE)+
+  theme_graph()
+```
+
+```{r}
+#externe 2020
+externe_2020_edge_list_name <- externe_2020 %>% select(n_poste, Name) %>%
+  inner_join(., select(., n_poste, Name), by = "n_poste") %>%
+  rename(Name1 = Name.x, Name2 = Name.y) %>%
+  filter(Name1 != Name2) %>%
+  unique %>%
+  arrange(n_poste)
+
+head(externe_2020_edge_list_name)
+
+#create node list
+
+#  Get distinct source names
+sources7<-externe_2020_edge_list_name  %>% distinct(Name1) %>% rename(label = Name1)
+# Get distinct destination names
+destinations7 <- externe_2020_edge_list_name %>%
+  distinct(Name2) %>%
+  rename(label = Name2)
+# Join the two data to create node
+# Add unique ID for each country
+nodes7<- inner_join(sources7, destinations7, by = "label") 
+nodes7 <- nodes7 %>%
+  mutate(id = 1:nrow(nodes7)) %>%
+  select(id, everything())
+head(nodes7, 3)
+
+# Rename the n.call column to weight
+ externe_2020_edge_list_name <- externe_2020_edge_list_name %>%
+  rename(weight = n_poste)
+## (a) Join nodes id for source column
+edges7 <-externe_2020_edge_list_name  %>% 
+  left_join(nodes7, by = c("Name1" = "label")) %>% 
+  rename(from = id)
+# (b) Join nodes id for destination column
+edges7 <- edges7 %>% 
+  left_join(nodes7, by = c("Name2" = "label")) %>% 
+  rename(to = id)
+# (c) Select/keep only the columns from and to
+edges7 <- select(edges7, from, to, weight)
+head(edges7, 3)
+```
+```{r}
+set.seed(123)
+net.tidy7 <- tbl_graph(
+  nodes = nodes7, edges = edges7, directed = TRUE
+  )
+ggraph(net.tidy7, layout = "graphopt") + 
+  geom_edge_link(width = 0.5, colour = "lightgray") +
+  geom_node_point(size = 1.5, colour = "#00AFBB") +
+  geom_node_text(aes(label = label), repel = TRUE)+
+  theme_graph()
+```
+```{r}
+#interne 2020
+interne_2020_edge_list_name <- interne_2020 %>% select(n_poste, Name) %>%
+  inner_join(., select(., n_poste, Name), by = "n_poste") %>%
+  rename(Name1 = Name.x, Name2 = Name.y) %>%
+  filter(Name1 != Name2) %>%
+  unique %>%
+  arrange(n_poste)
+
+head(interne_2020_edge_list_name)
+
+#create node list
+
+#  Get distinct source names
+sources8 <-interne_2020_edge_list_name  %>% distinct(Name1) %>% rename(label = Name1)
+# Get distinct destination names
+destinations8 <- interne_2020_edge_list_name %>%
+  distinct(Name2) %>%
+  rename(label = Name2)
+# Join the two data to create node
+# Add unique ID for each country
+nodes8<- inner_join(sources8, destinations8, by = "label") 
+nodes8 <- nodes8 %>%
+  mutate(id = 1:nrow(nodes8)) %>%
+  select(id, everything())
+head(nodes8, 3)
+
+# Rename the n.call column to weight
+ interne_2020_edge_list_name <- interne_2020_edge_list_name %>%
+  rename(weight = n_poste)
+## (a) Join nodes id for source column
+edges8 <-interne_2020_edge_list_name  %>% 
+  left_join(nodes8, by = c("Name1" = "label")) %>% 
+  rename(from = id)
+# (b) Join nodes id for destination column
+edges8 <- edges8 %>% 
+  left_join(nodes8, by = c("Name2" = "label")) %>% 
+  rename(to = id)
+# (c) Select/keep only the columns from and to
+edges8 <- select(edges8, from, to, weight)
+head(edges8, 3)
+```
+```{r}
+set.seed(123)
+net.tidy8 <- tbl_graph(
+  nodes = nodes8, edges = edges8, directed = TRUE
+  )
+ggraph(net.tidy8, layout = "graphopt") + 
+  geom_edge_link(width = 0.5, colour = "lightgray") +
+  geom_node_point(size = 1.5, colour = "#00AFBB") +
+  geom_node_text(aes(label = label), repel = TRUE)+
+  theme_graph()
+```
+
+Make an interactive graph of one year (internal members) with networkD3.
+
+```{r}
+#subset interne 2017 to select n_poste and ID
+interne_2017_2 = interne_2017 %>% select(n_poste, ID)
+head(interne_2017_2)
+```
+
+
+```{r}
+#create igraph ibject
+graph_interne_2017 <- graph_from_data_frame(interne_2017_2, directed = FALSE)
+V(graph_interne_2017)$label <- V(graph_interne_2017)$name
+```
+
+```{r}
+# Use igraph to make the graph and find membership
+wc <- cluster_walktrap(graph_interne_2017)
+members <- membership(wc)
+#create graph object for network D3
+graph_interne_2017_d3 <- igraph_to_networkD3(graph_interne_2017, group = members)
+#head(graph_interne_2017_d3)
+```
+```{r}
+# Create force directed network plot
+forceNetwork(
+Links = graph_interne_2017_d3$links,
+Nodes = graph_interne_2017_d3$nodes,
+Source = 'source',
+Target = 'target',
+NodeID = 'name',
+Group = 'group'
+)
+```
+
+
+
+
+Plot a network graph where the vertices are colored by levels of the juries(additional i.e not in documentation)
+
+```{r}
+#filter for 2017
+interne_2017 = df %>% filter(status == 'interne' & year == 2017)
+externe_2017 = df %>% filter(status == 'externe' & year == 2017)
+#recode ?MCF to MCF and PUPH to PU-PH
+externe_2017$Level[externe_2017$Level == "?MCF"]  <- "MCF"
+externe_2017$Level[externe_2017$Level == "PUPH"]  <- "PU-PH"
+interne_2017$Level[interne_2017$Level == "?MCF"]  <- "MCF"
+interne_2017$Level[interne_2017$Level == "PUPH"]  <- "PU-PH"
+
+```
+
+Checking for external 2017 and coloring by level
+
+```{r}
+#self join to create edge list for external 2017
+externe_2017_edge_list_name <- externe_2017 %>% select(Level, n_poste, Name) %>%
+  inner_join(., select(., n_poste, Name), by = "n_poste") %>%
+  rename(Name1 = Name.x, Name2 = Name.y) %>%
+  filter(Name1 != Name2) %>%
+  unique %>%
+  arrange(n_poste)
+
+head(externe_2017_edge_list_name)
+```
+
+
+
+```{r}
+externe_2017_matrix_name <- as.matrix(externe_2017_edge_list_name[c('Name1', 'Name2')]) 
+```
+
+
+```{r}
+set.seed(123)
+
+
+externe_2017$Level <- as.factor(externe_2017$Level)
+#generate palette of 10 colours
+
+pal <- brewer.pal(n = 10, name = 'Paired')
+
+vertex.col <- pal[(externe_2017$Level)]
+
+
+#plot external 2017 graph colored by level of jury
+graph_externe_2017 <- graph_from_edgelist(externe_2017_matrix_name, directed = FALSE)
+
+
+
+plot(graph_externe_2017,
+     vertex.label = NA, vertex.size = 8, vertex.color = vertex.col)
+
+legend("topleft",bty = "n",
+       legend=levels((externe_2017$Level)),
+       fill=pal, border=NA)
+
+
+```
+
+Color by institutions
+```{r}
+#check how many institutions there are
+length(unique(externe_2017$institutions))
+```
+
+```{r}
+#self join to create external graph but this time with institutions
+externe_2017_edge_list_name <- externe_2017 %>% select(institutions, n_poste, Name) %>%
+  inner_join(., select(., n_poste, Name), by = "n_poste") %>%
+  rename(Name1 = Name.x, Name2 = Name.y) %>%
+  filter(Name1 != Name2) %>%
+  unique %>%
+  arrange(n_poste)
+
+head(externe_2017_edge_list_name)
+```
+
+
+
+```{r}
+externe_2017_matrix_name <- as.matrix(externe_2017_edge_list_name[c('Name1', 'Name2')]) 
+```
+
+
+```{r}
+set.seed(123)
+
+
+externe_2017$institutions <- as.factor(externe_2017$institutions)
+#generate palette of colors
+pal = grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert = T)]
+
+#pal <- brewer.pal(n = 10, name = 'Paired')
+vertex.col <- pal[(externe_2017$institutions)]
+
+
+
+graph_externe_2017 <- graph_from_edgelist(externe_2017_matrix_name, directed = FALSE)
+
+#plot external jury members for 2017 colored by institutions
+
+plot(graph_externe_2017,
+     vertex.label = NA, vertex.size = 8, vertex.color = vertex.col)
+
+legend("topleft",bty = "n",
+       legend=levels((externe_2017$institutions)),
+       fill=pal, border=NA,cex=0.5)
+
+
+```
+- A lot of links >> since juries travel/move from different institutions to select candidates
+
+```{r}
+set.seed(123)
+pal <- brewer.pal(n = 10, name = 'Paired')
+interne_2017$Level <- as.factor(interne_2017$Level)
+
+
+#internal 2017 colored by level
+vertex.col <- pal[(interne_2017$Level)]
+
+plot(graph_interne_2017,
+     vertex.label = NA, vertex.size = 8, vertex.color = vertex.col)
+
+legend("topleft",bty = "n",
+       legend=levels(interne_2017$Level),
+       fill=pal, border=NA,cex=1)
+
+
+```
+- Some networks are uncolored because the rows have N/A as institutions
+- Each small network represent an institution or institutions with their partners
+-(From the figure colored by level), we can see that in each small network there is atleast one PR(Professeurs des universités),each small network represent an institution and if there are multiple PR , it could be different departments of an institution or partner institutions
+
+
+```{r}
+pal <- brewer.pal(n = 10, name = 'Paired')
+
+interne_2017$institutions <- as.factor(interne_2017$institutions)
+
+# interne_2017$Level[interne_2017$Level == "?MCF"]  <- "MCF"
+# interne_2017$Level[interne_2017$Level == "PUPH"]  <- "PU-PH"
+
+#internal 2017 colored by institutions
+
+vertex.col <- pal[(interne_2017$institutions)]
+
+plot(graph_interne_2017,
+     vertex.label = NA, vertex.size = 8, vertex.color = vertex.col)
+
+legend("topleft",bty = "n",
+       legend=levels(interne_2017$institutions),
+       fill=pal, border=NA)
+```
+
+
+
+
+
+
+Apply a community detection approach to detect communities in one of the graphs with only external members
+```{r}
+# Community Detection ----------------------------------------------------
+# Louvain
+#apply community detection on external members 2017
+lc_externe_2017 <- cluster_louvain(graph_externe_2017)
+# membership(lc_externe_2017)
+# communities(lc_externe_2017)
+plot(lc_externe_2017, graph_externe_2017, vertex.label = NA, vertex.size = 7)
+```
+```{r}
+#infomap method - community detection
+imc_externe_2017 <- cluster_infomap(graph_externe_2017)
+
+plot(imc_externe_2017, graph_externe_2017, vertex.label = NA, vertex.size = 8)
+```
+
+Create a last graph where all years are pooled together, but only for external
+members. What is the problem with this graph ?
+
+```{r}
+#filter df for externe only
+externe = df %>% filter(status == "externe")
+#self join for externe
+externe_edge_list_name <- externe %>% select(n_poste, Name) %>%
+  inner_join(., select(., n_poste, Name), by = "n_poste") %>%
+  rename(Name1 = Name.x, Name2 = Name.y) %>%
+  filter(Name1 != Name2) %>%
+  unique %>%
+  arrange(n_poste)
+
+head(externe_edge_list_name)
+
+```
+
+
+
+```{r}
+#create matrix from dataframe
+externe_matrix_name <- as.matrix(externe_edge_list_name[c('Name1', 'Name2')]) 
+#color by level
+externe$Level <- as.factor(externe$Level)
+graph_externe <- graph_from_edgelist(externe_matrix_name, directed = FALSE)
+plot(graph_externe, vertex.label = NA, vertex.size = 8, vertex.color = externe$Level)
+
+
+```
+
+## Centrality measures
+Choose the relevant dataset to compute the following indicators. Identify
+the top ten members (create a table per indicator) with the highest values for
+the following indicators : degree, strength, betweenness.(https://dshizuka.github.io/networkanalysis/04_measuring.html)
+https://medium.com/@615162020004/social-network-analysis-with-r-centrality-measure-86d7fa273574
+
+Create the plots but 
+this time, the width of the nodes should depend upon the value of the centrality
+indicators.
+
+
+```{r}
+#create sub dataframe for external 2017
+externe_2017_2 = externe_2017 %>% select(n_poste, Name)
+head(externe_2017_2)
+```
+
+
+
+```{r}
+#get adjacency matrix from edge list 
+graph_2017_ex <- graph_from_edgelist(as.matrix(externe_2017_edge_list_name[c("Name1","Name2")]), directed = FALSE)
+```
+
+
+```{r}
+#show igraph object
+graph_2017_ex
+```
+
+```{r}
+#graph - node size depends on degree centrality
+set.seed(10)
+
+
+externe_2017$Level <- as.factor(externe_2017$Level)
+
+pal <- brewer.pal(n = 10, name = 'Paired')
+
+vertex.col <- pal[(externe_2017$Level)]
+#calculate degree
+de=igraph::degree(graph_2017_ex)
+plot(graph_2017_ex, vertex.label="", vertex.color=vertex.col, edge.color="slateblue", vertex.size=de*0.5, edge.width=E(graph_2017_ex)$weight*5)
+legend("topleft",bty = "n",
+       legend=levels((externe_2017$Level)),
+       fill=pal, border=NA,cex=1)
+```
+
+```{r}
+set.seed(10)
+
+#graph - node size depends on betweeness centrality colored by levels
+
+
+externe_2017$Level <- as.factor(externe_2017$Level)
+
+pal <- brewer.pal(n = 10, name = 'Paired')
+
+vertex.col <- pal[(externe_2017$Level)]
+
+be=betweenness(graph_2017_ex, normalized=T)
+
+plot(graph_2017_ex, vertex.label="", vertex.color=vertex.col, edge.color="slateblue", vertex.size=be*150)
+
+legend("topleft",bty = "n",
+       legend=levels((externe_2017$Level)),
+       fill=pal, border=NA,cex=1)
+```
+```{r}
+set.seed(10)
+
+
+#graph - edge width depends onstrength centrality
+
+externe_2017$Level <- as.factor(externe_2017$Level)
+
+pal <- brewer.pal(n = 10, name = 'Paired')
+
+vertex.col <- pal[(externe_2017$Level)]
+
+st=graph.strength(graph_2017_ex)
+
+plot(graph_2017_ex, vertex.label="", vertex.color=vertex.col, edge.color="slateblue", vertex.size=8,edge.width=st*0.3)
+
+legend("topleft",bty = "n",
+       legend=levels((externe_2017$Level)),
+       fill=pal, border=NA)
+```
+
+
+
+
+
+```{r}
+#Table for top 10 centrality
+#sort dataframe by 10 highest degree
+df_deg <- as.data.frame(de) %>% arrange(desc(as.data.frame(de)))
+#add name column
+df_deg$Name <- rownames(df_deg)
+#rename rownames to empty
+rownames(df_deg) <- c()
+df_deg <- head(df_deg,10)
+df_deg
+
+```
+
+
+```{r}
+#merge degree dataframe to get institution and level
+
+df_merged1<-merge(x = df_deg, y = externe_2017[, c("institutions", "Level","Name")], by = "Name", all.x=TRUE) 
+
+head(df_merged1[!duplicated(df_merged1),])
+
+```
+
+
+
+```{r}
+#Table for top 10 centrality
+#sort dataframe by 10 highest degree
+df_bet <- as.data.frame(be) %>% arrange(desc(as.data.frame(be)))
+#add name column
+df_bet$Name <- rownames(df_bet)
+#rename rownames to empty
+rownames(df_bet) <- c()
+df_bet <- head(df_bet,10)
+df_bet
+
+```
+
+
+```{r}
+#merge degree dataframe to get institution and level
+
+df_merged2<-merge(x = df_bet, y = externe_2017[, c("institutions", "Level","Name")], by = "Name", all.x=TRUE) 
+
+head(df_merged2[!duplicated(df_merged2),])
+
+```
+
+## Sankey diagram and chord plot
+
+```{r}
+links <- data.frame(
+source = c("Bachelor 2", "Bachelor 2", "Bachelor 2", "Exchange 1", "Bachelor 3", "Bachelor 3"),
+target = c("Bachelor 3", "CY Tech", "Wild", "Bachelor 3", "Bachelor 4", "Exchange 2"),
+value = c(12, 5, 1, 5, 13, 4)
+)
+
+
+
+nodes <- data.frame(name = c(as.character(links$source), as.character(links$target)) %>% unique())
+
+
+
+
+links$ID.source <- match(links$source, nodes$name) - 1
+links$ID.target <- match(links$target, nodes$name) - 1
+```
+
+
+
+
+```{r}
+p <- sankeyNetwork(Links = links, Nodes = nodes, Source = "ID.source", Target = "ID.target", Value = "value", NodeID = "name", sinksRight = FALSE,fontSize = 15)
+
+
+
+p
+```
+
+
+```{r}
+temp_graph <- graph.data.frame(links)
+adjaceny.matrix <- get.adjacency(temp_graph, sparse = FALSE, attr= "value")
+
+
+
+chordDiagram(adjaceny.matrix, transparency = 0.75)
+```
+
+
+
+
+
+
+
+
+
+
+
